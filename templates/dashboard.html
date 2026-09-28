@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JanSetu: Policymaker Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-gray-900 text-white flex flex-col">
+            <div class="p-6">
+                <h1 class="text-3xl font-bold tracking-wider text-blue-400">JanSetu</h1>
+                <p class="text-xs text-gray-400 mt-1">AI For Digital Public Infra</p>
+                <p class="text-xs font-bold text-gray-500 mt-1 uppercase tracking-widest">Spark Sense</p>
+            </div>
+            <nav class="flex-1 px-4 space-y-2 mt-4">
+                <a href="/dashboard" class="block px-4 py-2 bg-gray-800 text-blue-400 rounded-lg shadow font-medium">Overview Dashboard</a>
+                <a href="/tracker" class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition font-medium">Public Tracker View</a>
+                <a href="/logout" class="block px-4 py-2 mt-4 text-red-400 hover:bg-red-800 hover:text-white rounded-lg transition font-medium text-center">Logout</a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-8">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
+                <h2 class="text-3xl font-bold text-gray-800">Executive Overview</h2>
+                <div class="flex items-center gap-4">
+                    <form method="GET" action="/dashboard" id="wardFilterForm">
+                        <select name="ward" onchange="document.getElementById('wardFilterForm').submit()" class="px-4 py-2 bg-white border border-gray-200 shadow-sm rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
+                            <option value="">All Wards</option>
+                            {% for w in all_wards %}
+                            <option value="{{ w }}" {% if selected_ward == w %}selected{% endif %}>{{ w }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                    <button onclick="document.getElementById('grievanceModal').classList.remove('hidden')" class="px-4 py-2 bg-blue-600 text-white shadow-sm rounded-lg text-sm font-bold hover:bg-blue-700 transition">+ New Grievance</button>
+                    <a href="/api/export" class="px-4 py-2 bg-green-600 text-white shadow-sm rounded-lg text-sm font-bold hover:bg-green-700 transition flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Export Audit</a>
+                    <a href="/docs" target="_blank" class="px-4 py-2 bg-white border border-gray-200 shadow-sm rounded-lg text-sm font-semibold hover:bg-gray-50 transition">API Documentation</a>
+                </div>
+            </div>
+            
+            <!-- Metric Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Total Impacted Citizens</p>
+                        <p class="text-4xl font-bold text-gray-900 mt-2">{{ total }}</p>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-red-100 flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-semibold text-red-500 uppercase tracking-wide">Critical Hazards (4-5)</p>
+                        <p class="text-4xl font-bold text-red-600 mt-2">{{ critical }}</p>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-blue-100 flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-semibold text-blue-500 uppercase tracking-wide">Active Wards</p>
+                        <p class="text-4xl font-bold text-blue-600 mt-2">{{ wards }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- High Priority Action Queue -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+                    <div class="p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                        <h3 class="text-xl font-bold text-gray-800">High-Priority Hotspots</h3>
+                        <span class="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded font-bold">Priority Score = Urgency × Impact</span>
+                    </div>
+                    <div class="overflow-x-auto p-2">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="text-gray-400 text-xs uppercase tracking-wider">
+                                    <th class="p-4 font-semibold">Location / Ward</th>
+                                    <th class="p-4 font-semibold text-center">Issues</th>
+                                    <th class="p-4 font-semibold text-center">Score</th>
+                                    <th class="p-4 font-semibold text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                {% for h in hotspots %}
+                                <tr class="hover:bg-gray-50 transition">
+                                    <td class="p-4 font-bold text-gray-800">{{ h.location }}</td>
+                                    <td class="p-4 text-center text-gray-600 font-medium">{{ h.count }}</td>
+                                    <td class="p-4 text-center">
+                                        <span class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-bold shadow-sm">{{ h.score }}</span>
+                                    </td>
+                                    <td class="p-4 text-right">
+                                        <button onclick="generateMemo('{{ h.location }}')" class="px-4 py-2 bg-gray-900 text-white rounded-lg shadow text-xs font-bold hover:bg-gray-800 transition">🤖 Generate AI Action Memo</button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                {% if not hotspots %}
+                                <tr>
+                                    <td colspan="4" class="p-8 text-center text-gray-400 italic">No hotspot data available yet.</td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Report Management -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col col-span-1 lg:col-span-2 mt-2">
+                    <div class="p-6 border-b border-gray-100 bg-gray-50">
+                        <h3 class="text-xl font-bold text-gray-800">Report Management</h3>
+                        <p class="text-xs text-gray-500 mt-1">Update grievance statuses instantly</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="text-gray-400 text-xs uppercase tracking-wider bg-white border-b border-gray-100">
+                                    <th class="p-4 font-semibold">Ref ID</th>
+                                    <th class="p-4 font-semibold">Citizen</th>
+                                    <th class="p-4 font-semibold">Location</th>
+                                    <th class="p-4 font-semibold">Submitted On</th>
+                                    <th class="p-4 font-semibold">Category</th>
+                                    <th class="p-4 font-semibold">Urgency</th>
+                                    <th class="p-4 font-semibold">Status</th>
+                                    <th class="p-4 font-semibold text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                {% for r in recent %}
+                                <tr class="hover:bg-gray-50 transition text-sm">
+                                    <td class="p-4 font-mono font-bold text-gray-700">{{ r.reference_id }}</td>
+                                    <td class="p-4 text-gray-800">
+                                        <div class="font-bold">{{ r.citizen_name }}</div>
+                                        <div class="text-xs text-gray-500 font-mono">{{ r.id_type }}: {{ r.id_number_masked }}</div>
+                                        {% if r.is_student %}
+                                        <span class="inline-block mt-1 px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-bold rounded">🎓 Student ({{ r.college_name }})</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="p-4 text-gray-600">{{ r.location }}</td>
+                                    <td class="p-4">
+                                        <div class="text-sm font-bold text-gray-800">{{ r.date_str }}</div>
+                                        <div class="text-xs text-gray-500 font-mono">{{ r.time_str }}</div>
+                                    </td>
+                                    <td class="p-4"><span class="px-2 py-1 rounded bg-blue-50 text-blue-700 border border-blue-100 text-xs font-bold">{{ r.category }}</span></td>
+                                    <td class="p-4">
+                                        <span class="text-xs font-bold px-2 py-1 rounded {% if r.urgency_score >= 4 %} bg-red-100 text-red-700 {% else %} bg-green-100 text-green-700 {% endif %}">{{ r.urgency_score }}/5</span>
+                                    </td>
+                                    <td class="p-4">
+                                        <select id="status_{{ r.id }}" class="bg-white border border-gray-300 text-gray-700 text-xs rounded focus:ring-blue-500 focus:border-blue-500 block p-1.5 font-semibold">
+                                            <option value="Received" {% if r.status == 'Received' %}selected{% endif %}>Received</option>
+                                            <option value="AI Verified" {% if r.status == 'AI Verified' %}selected{% endif %}>AI Verified</option>
+                                            <option value="Assigned to Ward Officer" {% if r.status == 'Assigned to Ward Officer' %}selected{% endif %}>Assigned</option>
+                                            <option value="Resolution In Progress" {% if r.status == 'Resolution In Progress' %}selected{% endif %}>In Progress</option>
+                                            <option value="Resolved" {% if r.status == 'Resolved' %}selected{% endif %}>Resolved</option>
+                                        </select>
+                                    </td>
+                                    <td class="p-4 text-right">
+                                        <button onclick="updateStatus({{ r.id }}, this)" class="px-3 py-1.5 bg-blue-600 text-white rounded font-bold hover:bg-blue-700 transition shadow text-xs">Update</button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                {% if not recent %}
+                                <tr><td colspan="7" class="p-8 text-center text-gray-400 italic">No grievances recorded yet.</td></tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Registered Users Management -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col col-span-1 lg:col-span-2 mt-8">
+                    <div class="p-6 border-b border-gray-100 bg-gray-50">
+                        <h3 class="text-xl font-bold text-gray-800">Registered Citizens</h3>
+                        <p class="text-xs text-gray-500 mt-1">Directory of users registered via the global portal</p>
+                    </div>
+                    <div class="overflow-x-auto max-h-96">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="text-gray-400 text-xs uppercase tracking-wider bg-white border-b border-gray-100 sticky top-0">
+                                    <th class="p-4 font-semibold">JanSetu ID</th>
+                                    <th class="p-4 font-semibold">Name</th>
+                                    <th class="p-4 font-semibold">Phone</th>
+                                    <th class="p-4 font-semibold">Identity Document</th>
+                                    <th class="p-4 font-semibold">Role</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                {% for u in registered_users %}
+                                <tr class="hover:bg-gray-50 transition text-sm">
+                                    <td class="p-4 font-mono font-bold text-blue-700">{{ u.jansetu_id }}</td>
+                                    <td class="p-4 text-gray-800 font-bold">{{ u.full_name }}</td>
+                                    <td class="p-4 text-gray-600">{{ u.phone }}</td>
+                                    <td class="p-4 text-gray-600 font-mono text-xs">{{ u.id_type }}: {{ u.id_number }}</td>
+                                    <td class="p-4">
+                                        <span class="px-2 py-1 rounded bg-green-50 text-green-700 border border-green-100 text-xs font-bold uppercase">{{ u.role }}</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                {% if not registered_users %}
+                                <tr><td colspan="5" class="p-8 text-center text-gray-400 italic">No registered users found in Firestore.</td></tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modal -->
+            <div id="memoModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                <div class="bg-white rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl">
+                    <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-2xl">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">✨</span>
+                            <h3 class="text-xl font-bold text-gray-900">AI Budget Allocation Memo</h3>
+                        </div>
+                        <button onclick="document.getElementById('memoModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-900 transition text-2xl font-bold">&times;</button>
+                    </div>
+                    <div class="p-8 overflow-y-auto flex-1 prose prose-blue max-w-none text-gray-800" id="memoContent">
+                        <div class="flex flex-col items-center justify-center h-48 text-gray-500">
+                            <svg class="animate-spin h-10 w-10 mb-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            Generating executive memo...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Grievance Submission Modal -->
+            <div id="grievanceModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+                    <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                        <h3 class="text-xl font-bold text-gray-900">Live Citizen Submission</h3>
+                        <button onclick="document.getElementById('grievanceModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-900 transition text-2xl font-bold">&times;</button>
+                    </div>
+                    <form id="grievanceForm" class="p-6 space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Citizen Name</label>
+                                <input type="text" id="g_name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Location (Ward)</label>
+                                <input type="text" id="g_location" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ID Type</label>
+                                <select id="g_id_type" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                    <option value="Aadhaar Card">Aadhaar Card</option>
+                                    <option value="Passport">Passport</option>
+                                    <option value="Driver's License">Driver's License</option>
+                                    <option value="National ID">National ID</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Govt ID Number</label>
+                                <input type="text" id="g_id_number" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            </div>
+                        </div>
+                        <div class="p-3 border border-blue-100 bg-blue-50 rounded-lg">
+                            <label class="flex items-center gap-2 cursor-pointer font-semibold text-blue-900 text-xs">
+                                <input type="checkbox" id="g_is_student" onchange="document.getElementById('g_student_fields').classList.toggle('hidden')" class="w-3 h-3 text-blue-600 rounded">
+                                Student Track
+                            </label>
+                            <div id="g_student_fields" class="hidden mt-3 space-y-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-blue-800 mb-1">College Name</label>
+                                    <input type="text" id="g_college" class="w-full px-3 py-1.5 border border-blue-200 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-blue-800 mb-1">Student ID</label>
+                                    <input type="text" id="g_student_id" class="w-full px-3 py-1.5 border border-blue-200 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Complaint / Raw Text</label>
+                            <textarea id="g_text" required rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
+                        </div>
+                        <div class="flex justify-end gap-3 mt-6">
+                            <button type="button" onclick="document.getElementById('grievanceModal').classList.add('hidden')" class="px-4 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition">Cancel</button>
+                            <button type="submit" id="g_submit_btn" class="px-6 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+                                Submit & Analyze
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        async function generateMemo(location) {
+            document.getElementById('memoModal').classList.remove('hidden');
+            document.getElementById('memoContent').innerHTML = `
+                <div class="flex flex-col items-center justify-center h-48 text-gray-500">
+                    <svg class="animate-spin h-10 w-10 mb-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    Drafting formal budget memo for ${location}...
+                </div>`;
+            
+            try {
+                const response = await fetch('/analytics/generate-memo', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({location: location})
+                });
+                const data = await response.json();
+                document.getElementById('memoContent').innerHTML = marked.parse(data.memo);
+            } catch (err) {
+                document.getElementById('memoContent').innerHTML = `<p class="text-red-500 font-bold">Failed to generate memo.</p>`;
+            }
+        }
+
+        document.getElementById('grievanceForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('g_submit_btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Analyzing...`;
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/grievances', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        citizen_name: document.getElementById('g_name').value,
+                        location: document.getElementById('g_location').value,
+                        raw_text: document.getElementById('g_text').value,
+                        id_type: document.getElementById('g_id_type').value,
+                        id_number: document.getElementById('g_id_number').value,
+                        is_student: document.getElementById('g_is_student').checked,
+                        college_name: document.getElementById('g_college').value || null,
+                        student_id: document.getElementById('g_student_id').value || null
+                    })
+                });
+                
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    alert("Failed to submit grievance.");
+                }
+            } catch (err) {
+                alert("Error submitting grievance.");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+
+        async function updateStatus(id, btn) {
+            const statusVal = document.getElementById('status_' + id).value;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '...';
+            btn.disabled = true;
+            try {
+                const response = await fetch('/api/grievances/' + id + '/status', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({status: statusVal})
+                });
+                if (response.ok) {
+                    btn.innerHTML = 'Saved!';
+                    btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                    btn.classList.add('bg-green-600', 'hover:bg-green-700');
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                        btn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                    }, 2000);
+                } else {
+                    alert('Failed to update status.');
+                    btn.innerHTML = originalText;
+                }
+            } catch (err) {
+                alert('Error updating status.');
+                btn.innerHTML = originalText;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

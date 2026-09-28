@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JanSetu: Citizen Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col items-center py-12 px-4 font-sans relative">
+    
+    <!-- Top Navigation -->
+    <div class="absolute top-6 right-6 flex gap-4">
+        {% if jansetu_id %}
+            <a href="/logout" class="text-sm font-semibold text-red-500 hover:text-red-600 transition">Logout &rarr;</a>
+        {% else %}
+            <a href="/login" class="text-sm font-semibold text-gray-500 hover:text-blue-600 transition">Portal Login &rarr;</a>
+        {% endif %}
+    </div>
+
+    <div class="max-w-2xl w-full">
+        <!-- Header -->
+        <div class="text-center mb-10">
+            <h1 class="text-5xl font-extrabold tracking-tight text-blue-600 mb-3">JanSetu</h1>
+            <p class="text-gray-500 font-medium tracking-wide uppercase">Digital Public Infrastructure for Citizens</p>
+        </div>
+
+        {% if jansetu_id %}
+        <!-- Display JanSetu ID and My Submissions -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-blue-100 mb-8">
+            <h2 class="text-xl font-bold text-gray-900 mb-2">Welcome, <span class="text-blue-600">{{ user_name }}</span>! Your JanSetu ID: <span class="text-blue-600 bg-blue-50 px-3 py-1 rounded-lg font-mono">{{ jansetu_id }}</span></h2>
+            <p class="text-gray-500 mb-4 text-sm">You can use this ID to securely log in at any time.</p>
+            
+            {% if my_grievances %}
+            <h3 class="font-bold text-gray-800 mb-3 mt-6 border-b pb-2">My Submissions</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 text-gray-600 text-xs uppercase">
+                            <th class="p-3 rounded-tl-xl">Ref ID</th>
+                            <th class="p-3">Category</th>
+                            <th class="p-3">Location</th>
+                            <th class="p-3">Date</th>
+                            <th class="p-3 rounded-tr-xl">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-sm">
+                        {% for g in my_grievances %}
+                        <tr class="border-b border-gray-50">
+                            <td class="p-3 font-mono text-blue-600 font-medium">{{ g.reference_id }}</td>
+                            <td class="p-3 font-medium text-gray-800">{{ g.category }}</td>
+                            <td class="p-3 text-gray-600">{{ g.location }}</td>
+                            <td class="p-3 text-gray-500">{{ g.date_str }}</td>
+                            <td class="p-3">
+                                <span class="px-2 py-1 bg-yellow-50 text-yellow-700 text-xs font-bold rounded-full border border-yellow-200">{{ g.status }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-sm text-gray-500 italic mt-4">You have not submitted any grievances yet.</p>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div id="successBanner" class="hidden mb-6 bg-green-50 p-6 rounded-2xl border border-green-200 shadow-sm text-center">
+            <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600 mx-auto mb-3">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+            </div>
+            <h3 class="text-green-800 font-bold text-xl mb-1">Grievance Submitted!</h3>
+            <p class="text-green-700 mb-3">Your issue has been recorded and is being analyzed.</p>
+            <div class="bg-white px-4 py-3 rounded-xl border border-green-100 inline-block">
+                <span class="text-sm text-gray-500 font-semibold uppercase tracking-wider block mb-1">Your Tracking ID</span>
+                <span id="trackingIdDisplay" class="text-2xl font-mono font-bold text-gray-900"></span>
+            </div>
+            <p class="text-sm text-green-600 mt-4">Save this ID to check your status below.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Report Form -->
+            <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100">
+                <div class="mb-6 border-b border-gray-100 pb-4">
+                    <h2 class="text-2xl font-bold text-gray-900">Report an Issue</h2>
+                    <p class="text-sm text-gray-500 mt-1">Help us improve your neighborhood</p>
+                </div>
+                <form id="citizenForm" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Your Name</label>
+                            <input type="text" id="c_name" required class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition bg-gray-50 focus:bg-white text-gray-800">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Location / Ward</label>
+                            <input type="text" id="c_location" required placeholder="e.g. Ward 5" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition bg-gray-50 focus:bg-white text-gray-800">
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="{% if jansetu_id %}hidden{% endif %}">
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">ID Type</label>
+                            <select id="c_id_type" required class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition bg-gray-50 focus:bg-white text-gray-800">
+                                {% if jansetu_id %}<option value="JanSetu ID" selected>JanSetu ID</option>{% endif %}
+                                <option value="Aadhaar Card">Aadhaar Card</option>
+                                <option value="Passport">Passport</option>
+                                <option value="Driver's License">Driver's License</option>
+                                <option value="National ID">National ID</option>
+                            </select>
+                        </div>
+                        <div class="{% if jansetu_id %}hidden{% endif %}">
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">Government ID Number</label>
+                            <input type="text" id="c_id_number" value="{{ jansetu_id if jansetu_id else '' }}" required placeholder="Will be securely masked" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition bg-gray-50 focus:bg-white text-gray-800 font-mono">
+                        </div>
+                    </div>
+
+                    <!-- Student Track -->
+                    <div class="p-4 border border-blue-100 bg-blue-50 rounded-xl">
+                        <label class="flex items-center gap-2 cursor-pointer font-semibold text-blue-900 text-sm">
+                            <input type="checkbox" id="c_is_student" onchange="document.getElementById('student_fields').classList.toggle('hidden')" class="w-4 h-4 text-blue-600 rounded">
+                            I am a student reporting a campus/vicinity issue
+                        </label>
+                        <div id="student_fields" class="hidden mt-4 space-y-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-blue-800 mb-1">College / University Name</label>
+                                <input type="text" id="c_college" placeholder="e.g. KS Institute of Technology" class="w-full px-4 py-3 border border-blue-200 rounded-xl focus:ring-4 focus:ring-blue-100 outline-none transition bg-white text-gray-800">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-blue-800 mb-1">Student ID / Enrollment No.</label>
+                                <input type="text" id="c_student_id" class="w-full px-4 py-3 border border-blue-200 rounded-xl focus:ring-4 focus:ring-blue-100 outline-none transition bg-white text-gray-800 font-mono">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Describe the Issue</label>
+                        <textarea id="c_text" required rows="3" placeholder="Be as descriptive as possible..." class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition bg-gray-50 focus:bg-white text-gray-800"></textarea>
+                    </div>
+                    <button type="submit" id="c_submit_btn" class="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-600/30 flex justify-center items-center gap-2">
+                        Submit Grievance
+                    </button>
+                </form>
+            </div>
+
+            <!-- Status Lookup -->
+            <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 h-fit">
+                <div class="mb-6 border-b border-gray-100 pb-4">
+                    <h2 class="text-2xl font-bold text-gray-900">Track Status</h2>
+                    <p class="text-sm text-gray-500 mt-1">Check progress of an existing issue</p>
+                </div>
+                <form action="/tracker" method="GET" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Reference ID</label>
+                        <input type="text" name="ref" required placeholder="e.g. JS-8942" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition bg-gray-50 focus:bg-white font-mono text-gray-800">
+                    </div>
+                    <button type="submit" class="w-full py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition shadow-lg shadow-gray-900/30">
+                        Check Status &rarr;
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Public Feed (Resolutions in Action) -->
+        <div class="mt-12 bg-white p-6 sm:p-8 rounded-2xl shadow-xl shadow-gray-200/50 border border-green-100 mb-8">
+            <div class="mb-6 border-b border-gray-100 pb-4">
+                <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <span class="text-green-500">🟢</span> Public Transparency Feed
+                </h2>
+                <p class="text-sm text-gray-500 mt-1">Live updates on community grievances being actively resolved.</p>
+            </div>
+            
+            {% if public_feed %}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for f in public_feed %}
+                <div class="border border-gray-100 p-4 rounded-xl shadow-sm hover:shadow transition bg-gray-50">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="px-2 py-1 bg-blue-100 text-blue-800 text-[10px] font-bold uppercase rounded-md">{{ f.category }}</span>
+                        <span class="px-2 py-1 bg-green-100 text-green-800 text-[10px] font-bold uppercase rounded-md">{{ f.status }}</span>
+                    </div>
+                    <h4 class="font-bold text-gray-800 text-sm mb-1">{{ f.ai_summary }}</h4>
+                    <div class="flex justify-between items-center text-xs text-gray-500 mt-3">
+                        <span class="flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg> {{ f.location }}</span>
+                        <span>{{ f.date_str }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-sm text-gray-500 italic text-center py-4">No recent resolutions to display at the moment.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('citizenForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('c_submit_btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Processing...`;
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/grievances', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        citizen_name: document.getElementById('c_name').value,
+                        location: document.getElementById('c_location').value,
+                        raw_text: document.getElementById('c_text').value,
+                        id_type: document.getElementById('c_id_type').value,
+                        id_number: document.getElementById('c_id_number').value,
+                        is_student: document.getElementById('c_is_student').checked,
+                        college_name: document.getElementById('c_college').value || null,
+                        student_id: document.getElementById('c_student_id').value || null
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('citizenForm').reset();
+                    document.getElementById('trackingIdDisplay').textContent = data.reference_id;
+                    document.getElementById('successBanner').classList.remove('hidden');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                    alert("Failed to submit grievance. Please try again.");
+                }
+            } catch (err) {
+                alert("Error submitting grievance. Check connection.");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

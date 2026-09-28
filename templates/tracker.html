@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JanSetu: Citizen Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col items-center py-16 px-4 font-sans">
+    
+    <!-- Top Navigation / Back to portal -->
+    <div class="absolute top-6 right-6">
+        <a href="/dashboard" class="text-sm font-semibold text-gray-500 hover:text-blue-600 transition">Go to Policymaker Dashboard &rarr;</a>
+    </div>
+
+    <div class="max-w-xl w-full">
+        <!-- Header -->
+        <div class="text-center mb-10">
+            <h1 class="text-5xl font-extrabold tracking-tight text-blue-600 mb-3">JanSetu</h1>
+            <p class="text-gray-500 font-medium tracking-wide uppercase">Public Citizen Tracking Portal</p>
+        </div>
+
+        <!-- Search Box -->
+        <div class="bg-white p-6 rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 mb-8">
+            <form action="/tracker" method="GET" class="flex flex-col sm:flex-row gap-4">
+                <input type="text" name="ref" value="{{ ref or '' }}" placeholder="Enter Reference ID (e.g. 8A4B2C19)" class="flex-1 px-5 py-4 rounded-xl border border-gray-200 focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition font-mono text-gray-700" required>
+                <button type="submit" class="px-8 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-600/30">Track Status</button>
+            </form>
+        </div>
+
+        <!-- Results Area -->
+        {% if ref %}
+            {% if grievance %}
+            <div class="bg-white p-8 rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100">
+                <div class="mb-8 pb-6 border-b border-gray-100">
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="text-2xl font-bold text-gray-900">Complaint Details</h3>
+                        <span class="font-mono text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg border border-gray-200">{{ grievance.reference_id }}</span>
+                    </div>
+                    <p class="text-gray-600 mb-2"><strong>Location:</strong> {{ grievance.location }}</p>
+                    <p class="text-gray-600 mb-2"><strong>Category:</strong> <span class="bg-blue-50 text-blue-700 font-semibold px-2 py-0.5 rounded text-sm">{{ grievance.category }}</span></p>
+                    <div class="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                        <p class="text-sm font-medium text-gray-800 leading-relaxed">"{{ grievance.raw_text }}"</p>
+                    </div>
+                </div>
+
+                <!-- Status Timeline -->
+                <div class="relative pt-2">
+                    {% set statuses = ["Received", "AI Verified", "Assigned to Ward Officer", "Resolution In Progress", "Resolved"] %}
+                    {% set current_idx = statuses.index(grievance.status) if grievance.status in statuses else 0 %}
+                    
+                    <div class="absolute left-6 top-6 h-[calc(100%-3rem)] w-0.5 bg-gray-200"></div>
+                    
+                    <ul class="space-y-8 relative z-10">
+                        {% for status in statuses %}
+                        <li class="flex items-start gap-5">
+                            <div class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shadow-sm
+                                {% if loop.index0 < current_idx %} bg-green-500 text-white
+                                {% elif loop.index0 == current_idx %} bg-blue-600 text-white ring-8 ring-blue-50
+                                {% else %} bg-white border-2 border-gray-200 text-gray-300 {% endif %} shrink-0 transition-all">
+                                {% if loop.index0 < current_idx %} 
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                {% elif loop.index0 == current_idx %}
+                                    <div class="w-2.5 h-2.5 bg-white rounded-full animate-pulse"></div>
+                                {% else %} 
+                                    {{ loop.index }} 
+                                {% endif %}
+                            </div>
+                            <div class="pt-2.5">
+                                <span class="font-bold text-lg {% if loop.index0 <= current_idx %} text-gray-900 {% else %} text-gray-400 {% endif %} block">
+                                    {{ status }}
+                                </span>
+                                {% if loop.index0 == current_idx %}
+                                <span class="text-sm text-blue-600 font-medium">Current Status</span>
+                                {% endif %}
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% else %}
+            <div class="bg-red-50 p-6 rounded-2xl border border-red-100 flex items-center gap-4">
+                <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-red-500 shrink-0">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <div>
+                    <h4 class="text-red-800 font-bold text-lg">Record Not Found</h4>
+                    <p class="text-red-600 text-sm mt-1">We couldn't find a grievance with reference ID: <strong class="font-mono">{{ ref }}</strong></p>
+                </div>
+            </div>
+            {% endif %}
+        {% endif %}
+    </div>
+</body>
+</html>
